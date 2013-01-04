@@ -1,0 +1,52 @@
+<project name="WDJSP" basedir="." default="java">
+
+<target name="init">
+  <property name="build.compiler" value="classic" />
+  <property name="classpath" value=".:C:\java\build\tomcat\lib\servlet.jar" />
+</target>
+
+
+<target name="prepare" depends="init">
+  <mkdir dir="META-INF" />
+  <mkdir dir="../WEB-INF/lib" />
+  <mkdir dir="../WEB-INF/tlds" />
+</target>
+
+
+<target name="java" depends="prepare">
+  <javac srcdir="." destdir="." classpath="${classpath}" deprecation="on" />
+</target>
+
+<target name="webdev.jar" depends="java">
+  <jar jarfile="webdev.jar" basedir="." 
+       includes="**/*.class" excludes="com/taglib/wdjsp/mut/" />
+</target>
+
+<target name="mut.jar" depends="java,tld">
+  <jar jarfile="mut.jar" basedir="." 
+       includes="com/taglib/wdjsp/mut/*.class,META-INF/taglib.tld" />
+</target>
+
+<target name="tld">
+  <copy file="mut.tld" tofile="META-INF/taglib.tld" />
+</target>
+
+<target name="jars" depends="webdev.jar,mut.jar">
+</target>
+
+<target name="install" depends="prepare,jars">
+  <copy file="webdev.jar" todir="../WEB-INF/lib" />
+  <copy file="mut.jar" todir="../WEB-INF/lib" />
+  <copy file="mut.tld" todir="../WEB-INF/tlds" />
+</target>
+
+<target name="clean" depends="prepare">
+  <delete>
+    <fileset dir="." includes="*.jar,**/*.class" />
+  </delete>
+  <delete>
+    <fileset dir="META-INF" />
+  </delete>
+</target>
+
+</project>

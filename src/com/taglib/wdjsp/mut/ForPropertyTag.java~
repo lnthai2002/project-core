@@ -1,0 +1,182 @@
+package com.taglib.wdjsp.mut;
+
+import javax.servlet.jsp.PageContext;
+import javax.servlet.jsp.tagext.*;
+import javax.servlet.jsp.*;
+import java.lang.reflect.*;
+import java.beans.*;
+import java.io.IOException;
+
+public class ForPropertyTag extends BodyTagSupport {
+    private String name, property, id;
+    private Class elementClass;
+
+    public void setName (String name) {
+	this.name = name;
+    }
+    public String getName () {
+	return name;
+    }
+    public void setProperty (String property) {
+	this.property = property;
+    }
+    public String getProperty () {
+	return property;
+    }
+    public void setId (String id) {
+	this.id = id;
+    }
+    public String getId () {
+	return id;
+    }
+    public void setClass (String className) throws ClassNotFoundException {
+	setElementClass(Class.forName(className));
+    }
+    public void setElementClass (Class elementClass) {
+	this.elementClass = elementClass;
+    }
+    public Class getElementClass () {
+	return elementClass;
+    }
+
+    private Object bean;
+    private int index, size;
+    private Method elementMethod;
+
+    public int doStartTag () throws JspException {
+	bean = pageContext.findAttribute(name);
+	if (bean != null) {
+	    Class beanClass = bean.getClass();
+	    initSize(beanClass);
+	    if (size > 0) {
+		initElementMethod(beanClass);
+		index = 0;
+		assignElement(); 
+		return EVAL_BODY_TAG;
+	    } else {
+		return SKIP_BODY;
+	    }
+	} else {
+	    throw new JspException("No bean \"" + name 
+				   + "\" available for <forProperty> tag.");
+	}
+    }
+    public int doAfterBody () throws JspException {
+        BodyContent body = getBodyContent();
+        try {
+            body.writeOut(getPreviousOut());
+        } catch (IOException ex) {
+            throw new JspException("unexpected IO error");
+        }
+        body.clearBody();
+
+	if (++index < size) {
+	    assignElement();
+	    return EVAL_BODY_TAG;
+	} else {
+	    return SKIP_BODY;
+	}
+    }
+
+    public void release () {
+	super.release();
+	name = null; property = null; id = null; elementClass = null;
+	bean = null; index = 0; size = 0; elementMethod = null;
+    }
+
+    private void assignElement () throws JspException {
+	Object element = invokeMethod(elementMethod, index, "element");
+	pageContext.setAttribute(id, element);
+    }
+    private void initSize (Class beanClass) throws JspException {
+	Method method = getReader(beanClass, property + "Size", int.class);
+	Object sizeWrapper = invokeMethod(method, "size");
+	size = ((Integer) sizeWrapper).intValue();
+    }
+    private void initElementMethod (Class beanClass) throws JspException {
+	elementMethod =
+	    getIndexedReader(beanClass, property, elementClass);
+    }
+    private Method getReader (Class beanClass, 
+			      String property, Class returnType)
+	throws JspException {
+	try {
+	    BeanInfo beanInfo = Introspector.getBeanInfo(beanClass);
+	    PropertyDescriptor descriptors[] =
+		beanInfo.getPropertyDescriptors();
+	    int stop = descriptors.length;
+	    for (int i = 0; i < stop; ++i) {
+		PropertyDescriptor descriptor = descriptors[i];
+		if (descriptor.getName().equals(property)
+		    && (descriptor.getPropertyType() == returnType)) {
+		    return descriptor.getReadMethod();
+		}
+	    }
+	    throw new
+		JspException("Bean \"" + name +
+			     "\" has no property named \"" + property +
+			     "\" of type " + returnType.getName() +
+			     " for <ifProperty> tag.");
+	}
+	catch (IntrospectionException e) {
+	    throw new JspException(e.getMessage());
+	}
+    }
+    private Method getIndexedReader (Class beanClass, 
+				     String property, Class returnType)
+	throws JspException {
+	try {
+	    BeanInfo beanInfo = Introspector.getBeanInfo(beanClass);
+	    PropertyDescriptor descriptors[] =
+		beanInfo.getPropertyDescriptors();
+	    int stop = descriptors.length;
+	    for (int i = 0; i < stop; ++i) {
+		PropertyDescriptor descriptor = descriptors[i];
+		if (descriptor instanceof IndexedPropertyDescriptor
+		    && descriptor.getName().equals(property)) {
+		    IndexedPropertyDescriptor ipd =
+			(IndexedPropertyDescriptor) descriptor;
+		    if (ipd.getIndexedPropertyType() == returnType) {
+			return ipd.getIndexedReadMethod();
+		    }
+		}
+	    }
+	    throw new
+		JspException("Bean \"" + name +
+			     "\" has no indexed property named \"" +
+			     property +
+			     "\" of type " + returnType.getName() +
+			     " for <ifProperty> tag.");
+	}
+	catch (IntrospectionException e) {
+	    throw new JspException(e.getMessage());
+	}
+    }
+    private Object invokeMethod (Method method, String label)
+	throws JspException {
+	return invokeMethod(method, new Object[0], label);
+    }
+    private Object invokeMethod (Method method, int arg, String label)
+	throws JspException {
+	Integer args[] = { new Integer(arg) };
+	return invokeMethod(method, args, label);
+    }
+    private Object invokeMethod (Method method, Object args[], String label)
+	throws JspException {
+	try {
+	    return method.invoke(bean, args);
+	}
+	catch (IllegalAccessException e) {
+	    throw new JspException("Unable to invoke " + label + 
+				   " method corresponding to property \"" 
+				   + property + "\" of bean \"" + name 
+				   + "\" for <forProperty> tag.");
+	}
+	catch (InvocationTargetException e) {
+	    throw new JspException("Unable to invoke " + label
+				   + " method corresponding to property \"" 
+				   + property + "\" of bean \"" + name 
+				   + "\" for <forProperty> tag.");
+	}
+    }
+}

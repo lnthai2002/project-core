@@ -1,0 +1,52 @@
+package com.taglib.css2k.keystone;
+
+import java.beans.*;
+import java.lang.reflect.*;
+
+/**
+ * BeanInfo for the ForPropertyTag class, to enable the use of the word "class"
+ * as a bean property.
+ * @author Mark A. Kolb, mak@taglib.com
+ */
+public class ForPropertyTagBeanInfo extends SimpleBeanInfo {
+	/** 
+	 * Retrieves the property descriptors for the bean class associated with
+	 * this BeanInfo class, which map the bean's properties to their
+	 * corresponding getter and setter methods. In this specific case, all of
+	 * the properties except for "class" use the default mapping.
+	 * @return an array of PropertyDescriptor objects
+	 */
+	public PropertyDescriptor[] getPropertyDescriptors () {
+		try {
+			PropertyDescriptor[] result = new PropertyDescriptor[4];
+			result[0] = new PropertyDescriptor("name", ForPropertyTag.class);
+			result[1] = new PropertyDescriptor("property", ForPropertyTag.class);
+			result[2] = new PropertyDescriptor("id", ForPropertyTag.class);
+			result[3] = new PropertyDescriptor("class", 
+											   getClassGetter(),
+											   getClassSetter());
+			return result;
+		}
+		catch (NoSuchMethodException e) {
+			System.err.println("ERROR: ForPropertyTagBeanInfo.getPropertyDescriptors()");
+			System.err.println(e.toString());
+		}
+		catch (IntrospectionException e) {
+			System.err.println("ERROR: ForPropertyTagBeanInfo.getPropertyDescriptors()");
+			System.err.println(e.toString());
+		}
+		return null;
+	}
+	/** Fetches the getter method for the "class" property. */
+	private Method getClassGetter ()
+	 throws NoSuchMethodException, SecurityException {
+		 Class klass = ForPropertyTag.class;
+		 return klass.getMethod("getElementClass", new Class[0]);
+	}
+	/** Fetches the setter method for the "class" property. */
+	private Method getClassSetter ()
+	  throws NoSuchMethodException, SecurityException {
+		  Class klass = ForPropertyTag.class;
+		  return klass.getMethod("setElementClass", new Class[] { String.class });
+	}
+}
